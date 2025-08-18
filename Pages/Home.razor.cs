@@ -52,6 +52,15 @@ namespace ReportGroups.Blazor.Pages
             // Register custom drag behavior for header nodes
             Diagram.RegisterBehavior(new HeaderNodeDragBehavior(Diagram));
             
+            // Handle single click on column nodes for expand/collapse
+            Diagram.PointerClick += (model, args) =>
+            {
+                if (model is ColumnNode clickedColumn)
+                {
+                    ToggleColumnExpansion(clickedColumn);
+                }
+            };
+            
             // Handle double click on header nodes and column nodes
             Diagram.PointerDoubleClick += (model, args) =>
             {
@@ -68,7 +77,7 @@ namespace ReportGroups.Blazor.Pages
                 else if (model is ColumnNode columnNode)
                 {
                     // Show alert with position ID
-                    _ = ShowAlert($"Position ID: {columnNode.Position?.Id}");
+                    _ = ShowAlert($"Position ID: {columnNode.ReportPosition?.Id}");
                 }
             };
         }
@@ -76,6 +85,69 @@ namespace ReportGroups.Blazor.Pages
         private async Task ShowAlert(string message)
         {
             await JSRuntime.InvokeVoidAsync("alert", message);
+        }
+
+        private void ToggleColumnExpansion(ColumnNode clickedColumn)
+        {
+            // Find all column nodes in the current group
+            var currentGroup = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault();
+            if (currentGroup == null) return;
+
+            var allColumnNodes = currentGroup.Children.OfType<ColumnNode>().OrderBy(c => c.OriginalIndex).ToList();
+            
+            // Collapse all other columns first
+            foreach (var column in allColumnNodes)
+            {
+                if (column != clickedColumn)
+                {
+                    column.IsExpanded = false;
+                }
+            }
+
+            // Toggle the clicked column
+            clickedColumn.IsExpanded = !clickedColumn.IsExpanded;
+
+            // Recalculate positions
+            RecalculateColumnPositions(allColumnNodes);
+
+            // Trigger UI refresh
+            StateHasChanged();
+        }
+
+
+        private void RecalculateColumnPositions(List<ColumnNode> columnNodes)
+        {
+            // Find the current group and get its position
+            var currentGroup = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault();
+            if (currentGroup == null) return;
+
+            var headerNode = currentGroup.Children.OfType<HeaderNode>().FirstOrDefault();
+            if (headerNode == null) return;
+
+            // Use the header node's position as reference
+            var headerX = headerNode.Position?.X ?? 100;
+            var headerY = headerNode.Position?.Y ?? 0;
+            
+            var normalSpacing = 50;
+            var expandedHeight = 100; // Additional height for expanded node
+
+            var currentY = headerY + normalSpacing; // Start after header
+
+            for (int i = 0; i < columnNodes.Count; i++)
+            {
+                var column = columnNodes[i];
+                column.SetPosition(headerX, currentY);
+
+                // Calculate spacing for next node
+                if (column.IsExpanded)
+                {
+                    currentY += normalSpacing + expandedHeight;
+                }
+                else
+                {
+                    currentY += normalSpacing;
+                }
+            }
         }
 
         private void OnReportClick(Report report)
@@ -105,7 +177,8 @@ namespace ReportGroups.Blazor.Pages
                 var position = report.Positions[i];
                 var columnNode = new ColumnNode(new Point(centerX - 100, centerY - 200 + (i + 1) * nodeSpacing))
                 {
-                    Position = position,
+                    ReportPosition = position,
+                    OriginalIndex = i,
                     Locked = true
                 };
                 allNodes.Add(columnNode);
