@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Blazor.Diagrams;
+using Blazor.Diagrams.Core.Geometry;
 using Blazor.Diagrams.Core.Models;
+using Blazor.Diagrams.Options;
 using ReportGroups.Blazor.Models;
 using ReportGroups.Blazor.Components;
+using ReportGroups.Blazor.Behaviors;
 
 namespace ReportGroups.Blazor.Pages
 {
@@ -13,7 +16,37 @@ namespace ReportGroups.Blazor.Pages
 
         protected override void OnInitialized()
         {
-            Diagram = new BlazorDiagram();
+            var options = new BlazorDiagramOptions
+            {
+                AllowMultiSelection = false
+            };
+            
+            Diagram = new BlazorDiagram(options);
+            
+            // Debug: Print selection changes
+            Diagram.SelectionChanged += (selectedModel) =>
+            {
+                var selectedCount = Diagram.GetSelectedModels().Count();
+                Console.WriteLine($"Selection changed. Selected count: {selectedCount}");
+                
+                if (selectedModel != null && selectedModel.Selected)
+                {
+                    var selectedModels = Diagram.GetSelectedModels().ToList();
+                    Console.WriteLine($"Current selected models: {selectedModels.Count}");
+                    
+                    if (selectedModels.Count > 1)
+                    {
+                        Console.WriteLine("Multiple selection detected, unselelcting others...");
+                        // More than one selected, keep only the last selected one
+                        foreach (var model in selectedModels.Where(m => m != selectedModel))
+                        {
+                            Console.WriteLine($"Unselecting model: {model}");
+                            Diagram.UnselectModel(model);
+                        }
+                    }
+                }
+            };
+            
             Diagram.RegisterComponent<ReportGroup, ReportGroupWidget>();
         }
 
@@ -24,11 +57,25 @@ namespace ReportGroups.Blazor.Pages
             // Clear existing groups
             Diagram.Groups.Clear();
             
-            // Create new ReportGroup for the selected report
-            var reportGroup = new ReportGroup(report, new List<NodeModel>());
-            Diagram.Groups.Add(reportGroup);
-
+            // Create some test nodes centered in diagram
+            var centerX = 200; // Center of diagram
+            var centerY = 200;
+            var testNodes = new List<NodeModel>
+            {
+                new NodeModel(new Point(centerX - 50, centerY - 50)) { Title = "Test Node 1", Locked = false },
+                new NodeModel(new Point(centerX + 50, centerY - 25)) { Title = "Test Node 2", Locked = false },
+                new NodeModel(new Point(centerX, centerY + 50)) { Title = "Test Node 3", Locked = false }
+            };
             
+            // Add nodes to diagram first before putting them in group
+            foreach (var node in testNodes)
+            {
+                Diagram.Nodes.Add(node);
+            }
+            
+            // Create new ReportGroup for the selected report
+            var reportGroup = new ReportGroup(report, testNodes);
+            Diagram.Groups.Add(reportGroup);
         }
 
         private List<Report> reportPackage = new List<Report>
