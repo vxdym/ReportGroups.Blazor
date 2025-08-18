@@ -23,24 +23,17 @@ namespace ReportGroups.Blazor.Pages
             
             Diagram = new BlazorDiagram(options);
             
-            // Debug: Print selection changes
+            // Force single selection by monitoring selection changes
             Diagram.SelectionChanged += (selectedModel) =>
             {
-                var selectedCount = Diagram.GetSelectedModels().Count();
-                Console.WriteLine($"Selection changed. Selected count: {selectedCount}");
-                
                 if (selectedModel != null && selectedModel.Selected)
                 {
                     var selectedModels = Diagram.GetSelectedModels().ToList();
-                    Console.WriteLine($"Current selected models: {selectedModels.Count}");
-                    
                     if (selectedModels.Count > 1)
                     {
-                        Console.WriteLine("Multiple selection detected, unselelcting others...");
                         // More than one selected, keep only the last selected one
                         foreach (var model in selectedModels.Where(m => m != selectedModel))
                         {
-                            Console.WriteLine($"Unselecting model: {model}");
                             Diagram.UnselectModel(model);
                         }
                     }
