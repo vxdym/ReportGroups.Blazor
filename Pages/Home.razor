@@ -1,0 +1,31 @@
+﻿@page "/"
+@using global::Blazor.Diagrams.Components
+@using ReportGroups.Blazor.Models
+@using global::Blazor.Diagrams
+@using global::Blazor.Diagrams.Components.Widgets
+
+<PageTitle>Home</PageTitle>
+
+<h1>Reporting Package</h1>
+
+<ul class="list-group">
+    @foreach (var report in reportPackage)
+    {
+        <li class="list-group-item @(selectedReport == report ? "active" : "")" @onclick="() => OnReportClick(report)" style="cursor: pointer;">
+            @report.Name
+        </li>
+    }
+</ul>
+
+<div class="diagram-container">
+    <CascadingValue Value="Diagram" IsFixed="true">
+        <DiagramCanvas>
+            <Widgets>
+                <NavigatorWidget Width="200" Height="120"
+                                    Class="border border-black bg-white absolute"
+                                    Style="bottom: 15px; right: 15px;" />
+            </Widgets>
+        </DiagramCanvas>
+    </CascadingValue>
+</div>
+

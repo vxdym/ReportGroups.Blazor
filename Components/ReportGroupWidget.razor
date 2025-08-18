@@ -1,0 +1,21 @@
+@using ReportGroups.Blazor.Models
+@using global::Blazor.Diagrams.Core.Models
+@using global::Blazor.Diagrams.Components
+
+<div class="report-group">
+    <div class="title">
+        @Group.Title
+    </div>
+
+    @* This is required and it's what renders the children *@
+    <GroupNodes Group="Group" />
+
+    @foreach (var port in Group.Ports)
+    {
+        <PortRenderer Port="port" Class="group-port"></PortRenderer>
+    }
+</div>
+
+@code {
+    [Parameter] public ReportGroup Group { get; set; } = null!;
+}
