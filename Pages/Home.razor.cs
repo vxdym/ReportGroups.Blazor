@@ -4,6 +4,8 @@ using Blazor.Diagrams.Core.Geometry;
 using Blazor.Diagrams.Core.Models;
 using Blazor.Diagrams.Options;
 using ReportGroups.Blazor.Models;
+using ReportGroups.Blazor.Models.Groups;
+using ReportGroups.Blazor.Models.Nodes;
 using ReportGroups.Blazor.Components;
 
 namespace ReportGroups.Blazor.Pages
@@ -40,6 +42,7 @@ namespace ReportGroups.Blazor.Pages
             };
             
             Diagram.RegisterComponent<ReportGroup, ReportGroupWidget>();
+            Diagram.RegisterComponent<HeaderNode, HeaderNodeWidget>();
         }
 
         private void OnReportClick(Report report)
@@ -50,14 +53,22 @@ namespace ReportGroups.Blazor.Pages
             Diagram.Groups.Clear();
             Diagram.Nodes.Clear();
             
-            // Create some test nodes centered in diagram
+            // Create header node and test nodes
             var centerX = 200; // Center of diagram
             var centerY = 200;
+            
+            var headerNode = new HeaderNode(new Point(centerX - 75, centerY - 200)) 
+            { 
+                ReportName = report.Name, 
+                Locked = true 
+            };
+            
             var testNodes = new List<NodeModel>
             {
-                new NodeModel(new Point(centerX - 100, centerY - 10)) { Title = "Test Node 1", Locked = true },
-                new NodeModel(new Point(centerX + 50, centerY - 25)) { Title = "Test Node 2", Locked = true },
-                new NodeModel(new Point(centerX, centerY + 50)) { Title = "Test Node 3", Locked = true }
+                headerNode,
+                new NodeModel(new Point(centerX, centerY)) { Title = "Test Node 1", Locked = true },
+                new NodeModel(new Point(centerX, centerY - 100)) { Title = "Test Node 2", Locked = true },
+                new NodeModel(new Point(centerX, centerY - 150)) { Title = "Test Node 3", Locked = true }
             };
             
             // Add nodes to diagram first before putting them in group

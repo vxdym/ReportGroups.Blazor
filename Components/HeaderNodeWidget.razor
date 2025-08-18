@@ -1,0 +1,9 @@
+@using ReportGroups.Blazor.Models.Nodes
+
+<div class="header-node">
+    <span class="report-name">@Node.ReportName</span>
+</div>
+
+@code {
+    [Parameter] public HeaderNode Node { get; set; } = null!;
+}

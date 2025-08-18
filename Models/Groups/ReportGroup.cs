@@ -1,6 +1,7 @@
 using Blazor.Diagrams.Core.Models;
+using ReportGroups.Blazor.Models;
 
-namespace ReportGroups.Blazor.Models;
+namespace ReportGroups.Blazor.Models.Groups;
 
 public class ReportGroup : GroupModel
 {
