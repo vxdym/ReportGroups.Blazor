@@ -1,0 +1,9 @@
+@using ReportGroups.Blazor.Models.Nodes
+
+<div class="column-node">
+    <span class="position-title">@Node.Position?.Name</span>
+</div>
+
+@code {
+    [Parameter] public ColumnNode Node { get; set; } = null!;
+}

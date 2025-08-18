@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Blazor.Diagrams;
 using Blazor.Diagrams.Core.Geometry;
 using Blazor.Diagrams.Core.Models;
@@ -7,11 +8,14 @@ using ReportGroups.Blazor.Models;
 using ReportGroups.Blazor.Models.Groups;
 using ReportGroups.Blazor.Models.Nodes;
 using ReportGroups.Blazor.Components;
+using ReportGroups.Blazor.Behaviors;
 
 namespace ReportGroups.Blazor.Pages
 {
     public partial class Home : ComponentBase
     {
+        [Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+        
         private BlazorDiagram Diagram { get; set; } = null!;
         private Report? selectedReport = null;
 
@@ -43,6 +47,35 @@ namespace ReportGroups.Blazor.Pages
             
             Diagram.RegisterComponent<ReportGroup, ReportGroupWidget>();
             Diagram.RegisterComponent<HeaderNode, HeaderNodeWidget>();
+            Diagram.RegisterComponent<ColumnNode, ColumnNodeWidget>();
+            
+            // Register custom drag behavior for header nodes
+            Diagram.RegisterBehavior(new HeaderNodeDragBehavior(Diagram));
+            
+            // Handle double click on header nodes and column nodes
+            Diagram.PointerDoubleClick += (model, args) =>
+            {
+                if (model is HeaderNode headerNode)
+                {
+                    // Find the group that contains this header node
+                    var group = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault(g => g.Children.Contains(headerNode));
+                    if (group != null)
+                    {
+                        // Show alert with report ID
+                        _ = ShowAlert($"Report ID: {group.Report.Id}");
+                    }
+                }
+                else if (model is ColumnNode columnNode)
+                {
+                    // Show alert with position ID
+                    _ = ShowAlert($"Position ID: {columnNode.Position?.Id}");
+                }
+            };
+        }
+
+        private async Task ShowAlert(string message)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", message);
         }
 
         private void OnReportClick(Report report)
@@ -53,32 +86,39 @@ namespace ReportGroups.Blazor.Pages
             Diagram.Groups.Clear();
             Diagram.Nodes.Clear();
             
-            // Create header node and test nodes
+            // Create header node and column nodes for positions
             var centerX = 200; // Center of diagram
             var centerY = 200;
+            var nodeSpacing = 50; // Spacing between nodes
             
-            var headerNode = new HeaderNode(new Point(centerX - 75, centerY - 200)) 
+            var headerNode = new HeaderNode(new Point(centerX - 100, centerY - 200)) 
             { 
                 ReportName = report.Name, 
                 Locked = true 
             };
             
-            var testNodes = new List<NodeModel>
+            var allNodes = new List<NodeModel> { headerNode };
+            
+            // Create column nodes for each position in the report
+            for (int i = 0; i < report.Positions.Count; i++)
             {
-                headerNode,
-                new NodeModel(new Point(centerX, centerY)) { Title = "Test Node 1", Locked = true },
-                new NodeModel(new Point(centerX, centerY - 100)) { Title = "Test Node 2", Locked = true },
-                new NodeModel(new Point(centerX, centerY - 150)) { Title = "Test Node 3", Locked = true }
-            };
+                var position = report.Positions[i];
+                var columnNode = new ColumnNode(new Point(centerX - 100, centerY - 200 + (i + 1) * nodeSpacing))
+                {
+                    Position = position,
+                    Locked = true
+                };
+                allNodes.Add(columnNode);
+            }
             
             // Add nodes to diagram first before putting them in group
-            foreach (var node in testNodes)
+            foreach (var node in allNodes)
             {
                 Diagram.Nodes.Add(node);
             }
             
             // Create new ReportGroup for the selected report
-            var reportGroup = new ReportGroup(report, testNodes);
+            var reportGroup = new ReportGroup(report, allNodes);
             Diagram.Groups.Add(reportGroup);
         }
 
