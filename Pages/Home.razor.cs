@@ -46,8 +46,9 @@ namespace ReportGroups.Blazor.Pages
         {
             selectedReport = report;
             
-            // Clear existing groups
+            // Clear existing groups AND their nodes
             Diagram.Groups.Clear();
+            Diagram.Nodes.Clear();
             
             // Create some test nodes centered in diagram
             var centerX = 200; // Center of diagram
