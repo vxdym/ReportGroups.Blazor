@@ -5,7 +5,6 @@ using Blazor.Diagrams.Core.Models;
 using Blazor.Diagrams.Options;
 using ReportGroups.Blazor.Models;
 using ReportGroups.Blazor.Components;
-using ReportGroups.Blazor.Behaviors;
 
 namespace ReportGroups.Blazor.Pages
 {
@@ -55,9 +54,9 @@ namespace ReportGroups.Blazor.Pages
             var centerY = 200;
             var testNodes = new List<NodeModel>
             {
-                new NodeModel(new Point(centerX - 50, centerY - 50)) { Title = "Test Node 1", Locked = false },
-                new NodeModel(new Point(centerX + 50, centerY - 25)) { Title = "Test Node 2", Locked = false },
-                new NodeModel(new Point(centerX, centerY + 50)) { Title = "Test Node 3", Locked = false }
+                new NodeModel(new Point(centerX - 50, centerY - 50)) { Title = "Test Node 1", Locked = true },
+                new NodeModel(new Point(centerX + 50, centerY - 25)) { Title = "Test Node 2", Locked = true },
+                new NodeModel(new Point(centerX, centerY + 50)) { Title = "Test Node 3", Locked = true }
             };
             
             // Add nodes to diagram first before putting them in group
