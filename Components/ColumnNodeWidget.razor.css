@@ -50,7 +50,7 @@
     word-wrap: break-word;
 }
 
-.port-indicator {
+.node-port {
     position: absolute;
     right: -8px;
     top: 50%;

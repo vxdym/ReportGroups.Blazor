@@ -18,9 +18,9 @@
         }
     </div>
     
-    @if (Node.ReportPosition is ExtendedPosition)
+    @foreach (var port in Node.Ports)
     {
-        <div class="port-indicator"></div>
+        <PortRenderer Port="port" Class="node-port" />
     }
 </div>
 

@@ -2,6 +2,11 @@
 
 <div class="header-node">
     <span class="report-name">@Node.ReportName</span>
+    
+    @foreach (var port in Node.Ports)
+    {
+        <PortRenderer Port="port" Class="header-port" />
+    }
 </div>
 
 @code {

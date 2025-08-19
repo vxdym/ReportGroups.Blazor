@@ -10,10 +10,24 @@
     font-weight: bold;
     text-align: center;
     border-radius: 0;
+    position: relative;
 }
 
 .report-name {
     font-size: 14px;
     font-weight: 600;
     text-transform: uppercase;
+}
+
+.header-port {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: #6C7582;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
 }
