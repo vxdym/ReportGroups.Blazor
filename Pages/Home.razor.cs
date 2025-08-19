@@ -197,36 +197,43 @@ namespace ReportGroups.Blazor.Pages
 
         private List<Report> reportPackage = new List<Report>
         {
-            new Report("GuV Report", "GUV001")
+            new Report("GuV", "GUV001")
             {
-                Positions = new List<Position>
+                Positions = new List<PositionBase>
                 {
                     new Position("Umsatzerlöse", "UE001", "Erlöse aus Verkäufen"),
                     new Position("Materialaufwand", "MA001", "Kosten für Rohstoffe"),
                     new Position("Personalkosten", "PK001", "Löhne und Gehälter")
                 }
             },
-            new Report("Verbindlichkeiten Report", "VB001")
+            new Report("Verbindlichkeiten", "VB001")
             {
-                Positions = new List<Position>
+                Positions = new List<PositionBase>
                 {
                     new Position("Lieferantenverbindlichkeiten", "LV001", "Offene Rechnungen"),
                     new Position("Bankverbindlichkeiten", "BV001", "Kredite und Darlehen"),
-                    new Position("Steuerverbindlichkeiten", "SV001", "Zu zahlende Steuern")
+                    new Position("Steuerverbindlichkeiten", "SV001", "Zu zahlende Steuern"),
+                    new ExtendedPosition("Prüfung", "PR001", "Prüfung", new List<PositionBase>
+                    {
+                        new Position("Lieferantenverbindlichkeiten", "LV001", "Offene Rechnungen"),
+                        new Position("Bankverbindlichkeiten", "BV001", "Kredite und Darlehen"),
+                        new Position("Steuerverbindlichkeiten", "SV001", "Zu zahlende Steuern"),
+                    })
+                       
                 }
             },
-            new Report("Forderungen Report", "FO001")
+            new Report("Forderungen", "FO001")
             {
-                Positions = new List<Position>
+                Positions = new List<PositionBase>
                 {
                     new Position("Kundenforderungen", "KF001", "Ausstehende Rechnungen"),
                     new Position("Sonstige Forderungen", "SF001", "Andere Forderungen"),
                     new Position("Vorsteuer", "VS001", "Erstattbare Vorsteuer")
                 }
             },
-            new Report("Kosten Report", "KO001")
+            new Report("Kosten", "KO001")
             {
-                Positions = new List<Position>
+                Positions = new List<PositionBase>
                 {
                     new Position("Betriebskosten", "BK001", "Laufende Betriebsausgaben"),
                     new Position("Abschreibungen", "AB001", "Wertminderungen"),

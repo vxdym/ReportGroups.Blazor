@@ -3,7 +3,7 @@
     public class Report
     {
         public string Name { get; set; }
-        public List<Position> Positions { get; set; } = new();
+        public List<PositionBase> Positions { get; set; } = new();
         public string Id { get; set; }
 
         public Report(string name, string id)

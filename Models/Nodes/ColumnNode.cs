@@ -10,7 +10,7 @@ public class ColumnNode : NodeModel
     {
     }
 
-    public Position ReportPosition { get; set; } = null!;
+    public PositionBase ReportPosition { get; set; } = null!;
     public bool IsExpanded { get; set; } = false;
     public int OriginalIndex { get; set; } // Index in the original report positions list
 }

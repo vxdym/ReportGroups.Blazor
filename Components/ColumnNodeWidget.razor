@@ -1,7 +1,21 @@
 @using ReportGroups.Blazor.Models.Nodes
 
 <div class="column-node @(Node.IsExpanded ? "expanded" : "")">
-    <span class="position-title">@Node.ReportPosition?.Name</span>
+    <div class="node-content">
+        <div class="position-title">@Node.ReportPosition?.Name</div>
+        
+        @if (Node.IsExpanded)
+        {
+            <div class="position-details">
+                <div class="detail-item">
+                    <strong>ID:</strong> @Node.ReportPosition?.Id
+                </div>
+                <div class="detail-item">
+                    <strong>Info:</strong> @Node.ReportPosition?.FurtherInformation
+                </div>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
