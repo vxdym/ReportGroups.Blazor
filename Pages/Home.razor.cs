@@ -89,8 +89,9 @@ namespace ReportGroups.Blazor.Pages
 
         private void ToggleColumnExpansion(ColumnNode clickedColumn)
         {
-            // Find all column nodes in the current group
-            var currentGroup = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault();
+            // Find the group that contains the clicked column
+            var currentGroup = Diagram.Groups.OfType<ReportGroup>()
+                .FirstOrDefault(g => g.Children.Contains(clickedColumn));
             if (currentGroup == null) return;
 
             var allColumnNodes = currentGroup.Children.OfType<ColumnNode>().OrderBy(c => c.OriginalIndex).ToList();
@@ -108,20 +109,18 @@ namespace ReportGroups.Blazor.Pages
             clickedColumn.IsExpanded = !clickedColumn.IsExpanded;
 
             // Recalculate positions
-            RecalculateColumnPositions(allColumnNodes);
+            RecalculateColumnPositions(allColumnNodes, currentGroup);
 
             // Trigger UI refresh
             StateHasChanged();
         }
 
 
-        private void RecalculateColumnPositions(List<ColumnNode> columnNodes)
+        private void RecalculateColumnPositions(List<ColumnNode> columnNodes, ReportGroup targetGroup)
         {
-            // Find the current group and get its position
-            var currentGroup = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault();
-            if (currentGroup == null) return;
+            if (targetGroup == null) return;
 
-            var headerNode = currentGroup.Children.OfType<HeaderNode>().FirstOrDefault();
+            var headerNode = targetGroup.Children.OfType<HeaderNode>().FirstOrDefault();
             if (headerNode == null) return;
 
             // Use the header node's position as reference
@@ -200,6 +199,61 @@ namespace ReportGroups.Blazor.Pages
             // Create new ReportGroup for the selected report
             var reportGroup = new ReportGroup(report, allNodes);
             Diagram.Groups.Add(reportGroup);
+
+            // Create additional groups for ExtendedPositions
+            var groupOffset = 300; // Distance between groups
+            var currentGroupX = centerX + groupOffset;
+
+            foreach (var position in report.Positions.OfType<ExtendedPosition>())
+            {
+                CreateExtendedPositionGroup(position, currentGroupX, centerY);
+                currentGroupX += groupOffset;
+            }
+        }
+
+        private void CreateExtendedPositionGroup(ExtendedPosition extendedPosition, int centerX, int centerY)
+        {
+            var nodeSpacing = 50; // Spacing between nodes
+            
+            // Create header node for the extended position
+            var headerNode = new HeaderNode(new Point(centerX - 100, centerY - 200))
+            {
+                ReportName = extendedPosition.Name,
+                Locked = true
+            };
+
+            var allNodes = new List<NodeModel> { headerNode };
+
+            // Create column nodes for each sub-position in the extended position
+            for (int i = 0; i < extendedPosition.Positions.Count; i++)
+            {
+                var position = extendedPosition.Positions[i];
+                var columnNode = new ColumnNode(new Point(centerX - 100, centerY - 200 + (i + 1) * nodeSpacing))
+                {
+                    ReportPosition = position,
+                    OriginalIndex = i,
+                    Locked = true
+                };
+
+                // Add port if this sub-position is also an ExtendedPosition (recursion)
+                if (position is ExtendedPosition)
+                {
+                    columnNode.AddPort(PortAlignment.Right);
+                }
+
+                allNodes.Add(columnNode);
+            }
+
+            // Add nodes to diagram
+            foreach (var node in allNodes)
+            {
+                Diagram.Nodes.Add(node);
+            }
+
+            // Create a dummy report for the extended position group
+            var dummyReport = new Report(extendedPosition.Name, extendedPosition.Id);
+            var extendedGroup = new ReportGroup(dummyReport, allNodes);
+            Diagram.Groups.Add(extendedGroup);
         }
 
         private List<Report> reportPackage = new List<Report>
