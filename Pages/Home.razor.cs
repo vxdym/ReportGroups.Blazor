@@ -181,6 +181,13 @@ namespace ReportGroups.Blazor.Pages
                     OriginalIndex = i,
                     Locked = true
                 };
+
+                // Add port on the right side if this is an ExtendedPosition
+                if (position is ExtendedPosition)
+                {
+                    columnNode.AddPort(PortAlignment.Right);
+                }
+
                 allNodes.Add(columnNode);
             }
             

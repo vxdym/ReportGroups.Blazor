@@ -49,3 +49,16 @@
     margin-bottom: 5px;
     word-wrap: break-word;
 }
+
+.port-indicator {
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: #007acc;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+}
