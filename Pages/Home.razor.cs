@@ -34,8 +34,17 @@ namespace ReportGroups.Blazor.Pages
             };
             
             Diagram = new BlazorDiagram(options);
-            
-            // Force single selection by monitoring selection changes
+
+            Diagram.RegisterComponent<ReportGroup, ReportGroupWidget>();
+            Diagram.RegisterComponent<HeaderNode, HeaderNodeWidget>();
+            Diagram.RegisterComponent<ColumnNode, ColumnNodeWidget>();
+            Diagram.RegisterComponent<ExtensionNode, ExtensionNodeWidget>();
+
+            Diagram.RegisterBehavior(new HeaderNodeDragBehavior(Diagram));
+
+
+
+            //event um single selection zu forcen
             Diagram.SelectionChanged += (selectedModel) =>
             {
                 if (selectedModel != null && selectedModel.Selected)
@@ -43,7 +52,6 @@ namespace ReportGroups.Blazor.Pages
                     var selectedModels = Diagram.GetSelectedModels().ToList();
                     if (selectedModels.Count > 1)
                     {
-                        // More than one selected, keep only the last selected one
                         foreach (var model in selectedModels.Where(m => m != selectedModel))
                         {
                             Diagram.UnselectModel(model);
@@ -51,39 +59,43 @@ namespace ReportGroups.Blazor.Pages
                     }
                 }
             };
-            
-            Diagram.RegisterComponent<ReportGroup, ReportGroupWidget>();
-            Diagram.RegisterComponent<HeaderNode, HeaderNodeWidget>();
-            Diagram.RegisterComponent<ColumnNode, ColumnNodeWidget>();
-            
-            // Register custom drag behavior for header nodes
-            Diagram.RegisterBehavior(new HeaderNodeDragBehavior(Diagram));
-            
-            // Handle single click on column nodes for expand/collapse
+
+
             Diagram.PointerClick += (model, args) =>
             {
                 if (model is ColumnNode clickedColumn)
                 {
                     ToggleColumnExpansion(clickedColumn);
                 }
+                else if (model is ExtensionNode extensionNode)
+                {
+                    ExpandExtensionNode(extensionNode);
+                }
+                else if (model is HeaderNode headerNode)
+                {
+                    var group = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault(g => g.Children.Contains(headerNode));
+                    if (group != null && group.IsExpandedExtendedPosition)
+                    {
+                        // Gruppe ist erweitert -> zusammenklappen
+                        CollapseExtendedGroup(group);
+                    }
+                }
             };
             
-            // Handle double click on header nodes and column nodes
+
             Diagram.PointerDoubleClick += (model, args) =>
             {
                 if (model is HeaderNode headerNode)
                 {
-                    // Find the group that contains this header node
                     var group = Diagram.Groups.OfType<ReportGroup>().FirstOrDefault(g => g.Children.Contains(headerNode));
-                    if (group != null)
+                    if (group != null && !group.IsExpandedExtendedPosition)
                     {
-                        // Show alert with report ID
+                        // Nur Alert zeigen wenn NICHT erweitert (erweiterte werden per Single-Click eingeklappt)
                         _ = ShowAlert($"Report ID: {group.Report.Id}");
                     }
                 }
                 else if (model is ColumnNode columnNode)
                 {
-                    // Show alert with position ID
                     _ = ShowAlert($"Position ID: {columnNode.ReportPosition?.Id}");
                 }
             };
@@ -96,14 +108,12 @@ namespace ReportGroups.Blazor.Pages
 
         private void ToggleColumnExpansion(ColumnNode clickedColumn)
         {
-            // Find the group that contains the clicked column
             var currentGroup = Diagram.Groups.OfType<ReportGroup>()
                 .FirstOrDefault(g => g.Children.Contains(clickedColumn));
             if (currentGroup == null) return;
 
             var allColumnNodes = currentGroup.Children.OfType<ColumnNode>().OrderBy(c => c.OriginalIndex).ToList();
             
-            // Collapse all other columns first
             foreach (var column in allColumnNodes)
             {
                 if (column != clickedColumn)
@@ -112,13 +122,10 @@ namespace ReportGroups.Blazor.Pages
                 }
             }
 
-            // Toggle the clicked column
             clickedColumn.IsExpanded = !clickedColumn.IsExpanded;
 
-            // Recalculate positions
             RecalculateColumnPositions(allColumnNodes, currentGroup);
 
-            // Trigger UI refresh
             StateHasChanged();
         }
 
@@ -130,21 +137,19 @@ namespace ReportGroups.Blazor.Pages
             var headerNode = targetGroup.Children.OfType<HeaderNode>().FirstOrDefault();
             if (headerNode == null) return;
 
-            // Use the header node's position as reference
             var headerX = headerNode.Position?.X ?? 100;
             var headerY = headerNode.Position?.Y ?? 0;
             
             var normalSpacing = 50;
-            var expandedHeight = 100; // Additional height for expanded node
+            var expandedHeight = 100;
 
-            var currentY = headerY + normalSpacing; // Start after header
+            var currentY = headerY + normalSpacing;
 
             for (int i = 0; i < columnNodes.Count; i++)
             {
                 var column = columnNodes[i];
                 column.SetPosition(headerX, currentY);
 
-                // Calculate spacing for next node
                 if (column.IsExpanded)
                 {
                     currentY += normalSpacing + expandedHeight;
@@ -160,15 +165,12 @@ namespace ReportGroups.Blazor.Pages
         {
             selectedReport = report;
             
-            // Clear existing groups, nodes AND links
             Diagram.Groups.Clear();
             Diagram.Nodes.Clear();
             Diagram.Links.Clear();
             
-            // Create header node and column nodes for positions
-            var centerX = 200; // Center of diagram
-            var centerY = 300; // Lower starting position
-            var nodeSpacing = 50; // Spacing between nodes
+            var centerX = 200; 
+            var centerY = 300;
             
             var headerNode = new HeaderNode(new Point(centerX - 100, centerY - 200)) 
             { 
@@ -178,7 +180,7 @@ namespace ReportGroups.Blazor.Pages
             
             var allNodes = new List<NodeModel> { headerNode };
             
-            // Create column nodes for each position in the report
+            var nodeSpacing = 50;
             for (int i = 0; i < report.Positions.Count; i++)
             {
                 var position = report.Positions[i];
@@ -189,7 +191,7 @@ namespace ReportGroups.Blazor.Pages
                     Locked = true
                 };
 
-                // Add port on the right side if this is an ExtendedPosition
+                
                 if (position is ExtendedPosition)
                 {
                     columnNode.AddPort(PortAlignment.Right);
@@ -198,87 +200,57 @@ namespace ReportGroups.Blazor.Pages
                 allNodes.Add(columnNode);
             }
             
-            // Add nodes to diagram first before putting them in group
             foreach (var node in allNodes)
             {
                 Diagram.Nodes.Add(node);
             }
             
-            // Create new ReportGroup for the selected report
             var reportGroup = new ReportGroup(report, allNodes);
             Diagram.Groups.Add(reportGroup);
 
-            // Create additional groups for ExtendedPositions with dynamic positioning
             var extendedGroups = new List<(ExtendedPosition position, ReportGroup group)>();
             var extendedPositions = report.Positions.OfType<ExtendedPosition>().ToList();
 
-            // Define specific positions for each extended group
-            var groupPositions = new[]
-            {
-                new { X = centerX + 400, Y = centerY - 350 }, // Top right
-                new { X = centerX + 400, Y = centerY - 50 },  // Middle right
-                new { X = centerX + 400, Y = centerY + 250 }  // Bottom right
-            };
-
-            for (int i = 0; i < extendedPositions.Count && i < groupPositions.Length; i++)
+            var treeLayout = CalculateTreeLayout(extendedPositions, centerX, centerY);
+            
+            for (int i = 0; i < extendedPositions.Count; i++)
             {
                 var position = extendedPositions[i];
-                var groupPos = groupPositions[i];
+                var layoutPos = treeLayout[i];
                 
-                var extendedGroup = CreateExtendedPositionGroup(position, groupPos.X, groupPos.Y);
+                var extendedGroup = CreateExtendedPositionGroup(position, layoutPos.X, layoutPos.Y);
                 extendedGroups.Add((position, extendedGroup));
             }
 
-            // Create links between ExtendedPosition ports and their corresponding group headers
             CreateLinksToExtendedGroups(reportGroup, extendedGroups);
 
-            // Recursively create groups for nested ExtendedPositions
-            CreateNestedExtendedGroups(extendedGroups);
+            // Verschachtelte Gruppen werden nicht mehr initial erstellt
+            // CreateNestedExtendedGroups(extendedGroups);
         }
 
         private ReportGroup CreateExtendedPositionGroup(ExtendedPosition extendedPosition, int centerX, int centerY)
         {
-            var nodeSpacing = 50; // Spacing between nodes
-            
-            // Create header node for the extended position
+            var nodeSpacing = 50;
+           
             var headerNode = new HeaderNode(new Point(centerX - 100, centerY - 200))
             {
                 ReportName = extendedPosition.Name,
                 Locked = true
             };
 
-            // Add port on the left side of the header node for ExtendedPosition groups
             headerNode.AddPort(PortAlignment.Left);
 
             var allNodes = new List<NodeModel> { headerNode };
 
-            // Create column nodes for each sub-position in the extended position
-            for (int i = 0; i < extendedPosition.Positions.Count; i++)
-            {
-                var position = extendedPosition.Positions[i];
-                var columnNode = new ColumnNode(new Point(centerX - 100, centerY - 200 + (i + 1) * nodeSpacing))
-                {
-                    ReportPosition = position,
-                    OriginalIndex = i,
-                    Locked = true
-                };
+            // ExtensionNode hinzufügen statt ColumnNodes
+            var extensionNode = new ExtensionNode(new Point(centerX - 100, centerY - 200 + 50), extendedPosition);
+            allNodes.Add(extensionNode);
 
-                // Add port if this sub-position is also an ExtendedPosition (recursion)
-                if (position is ExtendedPosition)
-                {
-                    columnNode.AddPort(PortAlignment.Right);
-                }
-
-                allNodes.Add(columnNode);
-            }
-
-            // Add nodes to diagram
             foreach (var node in allNodes)
             {
                 Diagram.Nodes.Add(node);
             }
 
-            // Create a dummy report for the extended position group
             var dummyReport = new Report(extendedPosition.Name, extendedPosition.Id);
             var extendedGroup = new ReportGroup(dummyReport, allNodes);
             Diagram.Groups.Add(extendedGroup);
@@ -290,31 +262,46 @@ namespace ReportGroups.Blazor.Pages
         {
             foreach (var (extendedPosition, extendedGroup) in extendedGroups)
             {
-                // Find the ColumnNode in main group that represents this ExtendedPosition
                 var sourceColumnNode = mainGroup.Children.OfType<ColumnNode>()
                     .FirstOrDefault(cn => cn.ReportPosition == extendedPosition);
                 
                 if (sourceColumnNode == null) continue;
 
-                // Find the HeaderNode in the extended group
                 var targetHeaderNode = extendedGroup.Children.OfType<HeaderNode>().FirstOrDefault();
                 if (targetHeaderNode == null) continue;
 
-                // Create dynamic anchors for port positions (this worked before!)
                 var sourceAnchor = new DynamicAnchor(sourceColumnNode, new[]
                 {
-                    new BoundsBasedPositionProvider(1, 0.5) // Right center (port position)
+                    new BoundsBasedPositionProvider(1, 0.5)
                 });
                 
                 var targetAnchor = new DynamicAnchor(targetHeaderNode, new[]
                 {
-                    new BoundsBasedPositionProvider(0, 0.5) // Left center (port position)
+                    new BoundsBasedPositionProvider(0, 0.5)
                 });
 
-                // Create link that connects at port positions and follows nodes
                 var link = Diagram.Links.Add(new LinkModel(sourceAnchor, targetAnchor));
                 link.PathGenerator = new SmoothPathGenerator();
             }
+        }
+
+        private List<(int X, int Y)> CalculateTreeLayout(List<ExtendedPosition> positions, int rootX, int rootY)
+        {
+            var layout = new List<(int X, int Y)>();
+            var levelWidth = 400;
+            var nodeHeight = 300;
+            
+            var totalHeight = positions.Count * nodeHeight;
+            var startY = rootY - (totalHeight / 2);
+            
+            for (int i = 0; i < positions.Count; i++)
+            {
+                var x = rootX + levelWidth;
+                var y = startY + (i * nodeHeight);
+                layout.Add((x, y));
+            }
+            
+            return layout;
         }
 
         private void CreateNestedExtendedGroups(List<(ExtendedPosition position, ReportGroup group)> parentGroups)
@@ -325,28 +312,179 @@ namespace ReportGroups.Blazor.Pages
                 if (!nestedExtendedPositions.Any()) continue;
 
                 var nestedGroups = new List<(ExtendedPosition position, ReportGroup group)>();
+                var parentHeaderNode = parentGroup.Children.OfType<HeaderNode>().FirstOrDefault();
+                if (parentHeaderNode == null) continue;
+
+                var parentX = (int)(parentHeaderNode.Position?.X ?? 0);
+                var parentY = (int)(parentHeaderNode.Position?.Y ?? 0);
+                var nestedLayout = CalculateNestedTreeLayout(nestedExtendedPositions, parentX, parentY);
 
                 for (int i = 0; i < nestedExtendedPositions.Count; i++)
                 {
                     var nestedPosition = nestedExtendedPositions[i];
-                    
-                    // Position nested groups to the right of parent group
-                    var parentHeaderNode = parentGroup.Children.OfType<HeaderNode>().FirstOrDefault();
-                    if (parentHeaderNode == null) continue;
+                    var layoutPos = nestedLayout[i];
 
-                    var nestedX = (int)(parentHeaderNode.Position?.X ?? 0) + 350; // Right of parent
-                    var nestedY = (int)(parentHeaderNode.Position?.Y ?? 0) + (i * 150); // Stacked vertically
-
-                    var nestedGroup = CreateExtendedPositionGroup(nestedPosition, nestedX, nestedY);
+                    var nestedGroup = CreateExtendedPositionGroup(nestedPosition, layoutPos.X, layoutPos.Y);
                     nestedGroups.Add((nestedPosition, nestedGroup));
                 }
 
-                // Create links from parent group to nested groups
                 CreateLinksToExtendedGroups(parentGroup, nestedGroups);
 
-                // Recursively handle further nesting
+                //recursion
                 CreateNestedExtendedGroups(nestedGroups);
             }
+        }
+
+        private void ExpandExtensionNode(ExtensionNode extensionNode)
+        {
+            if (extensionNode.ExtendedPosition == null || extensionNode.PositionCount == 0) return;
+
+            // Finde die Gruppe, die diese ExtensionNode enthält
+            var parentGroup = Diagram.Groups.OfType<ReportGroup>()
+                .FirstOrDefault(g => g.Children.Contains(extensionNode));
+            if (parentGroup == null) return;
+
+            // Markiere als erweitert und speichere Original
+            parentGroup.IsExpandedExtendedPosition = true;
+            parentGroup.OriginalExtendedPosition = extensionNode.ExtendedPosition;
+
+            // Entferne die ExtensionNode
+            Diagram.Nodes.Remove(extensionNode);
+            parentGroup.RemoveChild(extensionNode);
+
+            // Erstelle ColumnNodes für alle Positionen
+            var nodeSpacing = 50;
+            var extensionNodePos = extensionNode.Position;
+            
+            for (int i = 0; i < extensionNode.ExtendedPosition.Positions.Count; i++)
+            {
+                var position = extensionNode.ExtendedPosition.Positions[i];
+                var columnNode = new ColumnNode(new Point(extensionNodePos.X, extensionNodePos.Y + (i * nodeSpacing)))
+                {
+                    ReportPosition = position,
+                    OriginalIndex = i,
+                    Locked = true
+                };
+
+                if (position is ExtendedPosition)
+                {
+                    columnNode.AddPort(PortAlignment.Right);
+                }
+
+                Diagram.Nodes.Add(columnNode);
+                parentGroup.AddChild(columnNode);
+            }
+
+            // Jetzt erstelle verschachtelte ExtendedPosition-Gruppen falls welche vorhanden sind
+            CreateNestedExtendedGroupsForExpansion(parentGroup, extensionNode.ExtendedPosition);
+
+            StateHasChanged();
+        }
+
+        private void CreateNestedExtendedGroupsForExpansion(ReportGroup parentGroup, ExtendedPosition extendedPosition)
+        {
+            var nestedExtendedPositions = extendedPosition.Positions.OfType<ExtendedPosition>().ToList();
+            if (!nestedExtendedPositions.Any()) return;
+
+            var nestedGroups = new List<(ExtendedPosition position, ReportGroup group)>();
+            var parentHeaderNode = parentGroup.Children.OfType<HeaderNode>().FirstOrDefault();
+            if (parentHeaderNode == null) return;
+
+            var parentX = (int)(parentHeaderNode.Position?.X ?? 0);
+            var parentY = (int)(parentHeaderNode.Position?.Y ?? 0);
+            var nestedLayout = CalculateNestedTreeLayout(nestedExtendedPositions, parentX, parentY);
+
+            for (int i = 0; i < nestedExtendedPositions.Count; i++)
+            {
+                var nestedPosition = nestedExtendedPositions[i];
+                var layoutPos = nestedLayout[i];
+
+                var nestedGroup = CreateExtendedPositionGroup(nestedPosition, layoutPos.X, layoutPos.Y);
+                nestedGroups.Add((nestedPosition, nestedGroup));
+            }
+
+            CreateLinksToExtendedGroups(parentGroup, nestedGroups);
+        }
+
+        private void CollapseExtendedGroup(ReportGroup group)
+        {
+            if (!group.IsExpandedExtendedPosition || group.OriginalExtendedPosition == null) return;
+
+            // Entferne alle verschachtelten ExtendedPosition-Gruppen
+            RemoveNestedExtendedGroups(group.OriginalExtendedPosition);
+
+            // Entferne alle ColumnNodes
+            var headerNode = group.Children.OfType<HeaderNode>().FirstOrDefault();
+            var columnNodesToRemove = group.Children.OfType<ColumnNode>().ToList();
+
+            foreach (var columnNode in columnNodesToRemove)
+            {
+                Diagram.Nodes.Remove(columnNode);
+                group.RemoveChild(columnNode);
+            }
+
+            // Erstelle ExtensionNode wieder
+            var headerPosition = headerNode?.Position ?? new Point(0, 0);
+            var extensionNode = new ExtensionNode(
+                new Point(headerPosition.X, headerPosition.Y + 50), 
+                group.OriginalExtendedPosition
+            );
+
+            Diagram.Nodes.Add(extensionNode);
+            group.AddChild(extensionNode);
+
+            // Reset flags
+            group.IsExpandedExtendedPosition = false;
+            group.OriginalExtendedPosition = null;
+
+            StateHasChanged();
+        }
+
+        private void RemoveNestedExtendedGroups(ExtendedPosition extendedPosition)
+        {
+            var nestedExtendedPositions = extendedPosition.Positions.OfType<ExtendedPosition>().ToList();
+            
+            foreach (var nestedPosition in nestedExtendedPositions)
+            {
+                // Finde die entsprechende Gruppe
+                var groupToRemove = Diagram.Groups.OfType<ReportGroup>()
+                    .FirstOrDefault(g => g.Report.Id == nestedPosition.Id);
+                
+                if (groupToRemove != null)
+                {
+                    // Rekursiv verschachtelte Gruppen entfernen
+                    if (groupToRemove.IsExpandedExtendedPosition && groupToRemove.OriginalExtendedPosition != null)
+                    {
+                        RemoveNestedExtendedGroups(groupToRemove.OriginalExtendedPosition);
+                    }
+                    
+                    // Entferne alle Nodes der Gruppe
+                    var nodesToRemove = groupToRemove.Children.ToList();
+                    foreach (var node in nodesToRemove)
+                    {
+                        Diagram.Nodes.Remove(node);
+                    }
+                    
+                    // Entferne die Gruppe selbst
+                    Diagram.Groups.Remove(groupToRemove);
+                }
+            }
+        }
+
+        private List<(int X, int Y)> CalculateNestedTreeLayout(List<ExtendedPosition> positions, int parentX, int parentY)
+        {
+            var layout = new List<(int X, int Y)>();
+            var levelWidth = 350;
+            var nodeHeight = 200;
+            
+            for (int i = 0; i < positions.Count; i++)
+            {
+                var x = parentX + levelWidth;
+                var y = parentY + (i * nodeHeight) - ((positions.Count - 1) * nodeHeight / 2);
+                layout.Add((x, y));
+            }
+            
+            return layout;
         }
 
         private List<Report> reportPackage = new List<Report>
@@ -359,7 +497,6 @@ namespace ReportGroups.Blazor.Pages
                     new Position("Materialaufwand", "MA001", "Kosten für Rohstoffe"),
                     new Position("Personalkosten", "PK001", "Löhne und Gehälter"),
                     
-                    // Verbindlichkeiten als ExtendedPosition
                     new ExtendedPosition("Verbindlichkeiten", "VB001", "Verbindlichkeiten Report", new List<PositionBase>
                     {
                         new Position("Lieferantenverbindlichkeiten", "LV001", "Offene Rechnungen"),
@@ -373,7 +510,6 @@ namespace ReportGroups.Blazor.Pages
                         })
                     }),
                     
-                    // Forderungen als ExtendedPosition
                     new ExtendedPosition("Forderungen", "FO001", "Forderungen Report", new List<PositionBase>
                     {
                         new Position("Kundenforderungen", "KF001", "Ausstehende Rechnungen"),
@@ -381,7 +517,6 @@ namespace ReportGroups.Blazor.Pages
                         new Position("Vorsteuer", "VS001", "Erstattbare Vorsteuer")
                     }),
                     
-                    // Kosten als ExtendedPosition
                     new ExtendedPosition("Kosten", "KO001", "Kosten Report", new List<PositionBase>
                     {
                         new Position("Betriebskosten", "BK001", "Laufende Betriebsausgaben"),

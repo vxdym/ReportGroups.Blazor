@@ -1,0 +1,43 @@
+.column-node {
+    width: 200px;
+    height: 50px;
+    background: white;
+    border: 1px solid #ccc;
+    color: black;
+    font-weight: normal;
+    border-radius: 0;
+    position: relative;
+}
+
+.position-header {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.position-name {
+    font-size: 14px;
+    font-weight: 400;
+    text-align: center;
+}
+
+.position-name.clickable {
+    font-weight: bold;
+    color: #1976d2;
+    cursor: pointer;
+}
+
+.column-port {
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: #007acc;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+}

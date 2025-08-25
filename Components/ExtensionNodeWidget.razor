@@ -1,0 +1,26 @@
+@using ReportGroups.Blazor.Models.Nodes
+@using global::Blazor.Diagrams.Components
+
+<div class="column-node" @onclick="OnClick">
+    <div class="position-header">
+        <div class="position-name @(Node.PositionCount > 0 ? "clickable" : "")">@Node.Text</div>
+    </div>
+
+    @foreach (var port in Node.Ports)
+    {
+        <PortRenderer Port="port" Class="column-port"></PortRenderer>
+    }
+</div>
+
+@code {
+    [Parameter] public ExtensionNode Node { get; set; } = null!;
+    [Parameter] public EventCallback<ExtensionNode> OnExtensionNodeClick { get; set; }
+
+    private async Task OnClick()
+    {
+        if (Node.PositionCount > 0)
+        {
+            await OnExtensionNodeClick.InvokeAsync(Node);
+        }
+    }
+}
